@@ -107,10 +107,20 @@
           <button class="secondary" id="next">Next →</button>
         </div>
         <div class="source-fields" id="sourceFields">
+		
           <div class="field">
-            <label for="arabic">Arabic</label>
-            <textarea id="arabic" dir="rtl" lang="ar" rows="3" placeholder="Enter or paste the Arabic verse here"></textarea>
-          </div>
+  <label for="arabic">Arabic · Qur'an text</label>
+  <textarea
+    id="arabic"
+    dir="rtl"
+    lang="ar"
+    rows="3"
+    readonly
+    aria-readonly="true"
+    placeholder="Arabic verse will load automatically"
+  ></textarea>
+		  </div>
+		  
           <div class="field">
             <label for="translation">Translation</label>
             <textarea id="translation" rows="3" placeholder="Enter your chosen translation"></textarea>
@@ -145,7 +155,6 @@
       </section>
 
       <section class="view" id="search">
-        <div class="kicker">YOUR NOTEBOOK</div>
         <h1>Search</h1>
         <p class="lead compact">Find something you wrote or saved.</p>
         <label class="search big-search"><span>⌕</span><input id="globalSearch" type="search" placeholder="Search Arabic, translations, reflections…"></label>
@@ -268,7 +277,8 @@
     </main>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="js/data.js"></script>
-    <script src="js/app.js"></script>
+<script src="js/data.js"></script>
+<script src="js/quran.js"></script>
+<script src="js/app.js"></script>
   </body>
 </html>
