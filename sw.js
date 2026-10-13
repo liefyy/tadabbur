@@ -1,37 +1,75 @@
-const CACHE = "tadabbur-shell-v2";
+
+const CACHE = "tadabbur-shell-v3";
+
 const FILES = [
   "./",
   "./index.html",
   "./css/style.css",
   "./js/data.js",
+  "./js/quran.js",
   "./js/app.js",
   "./manifest.webmanifest"
 ];
 
-self.addEventListener("install", e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)));
-  self.skipWaiting();
+// Install: cache the files required to run Tadabbur offline.
+self.addEventListener("install", event => {
+  event.waitUntil(
+    caches.open(CACHE)
+      .then(cache => cache.addAll(FILES))
+      .then(() => self.skipWaiting())
+  );
 });
 
-self.addEventListener("activate", e =>
-  e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-    )
-  )
-);
+// Activate: remove outdated caches and take control.
+self.addEventListener("activate", event => {
+  event.waitUntil(
+    caches.keys()
+      .then(keys =>
+        Promise.all(
+          keys
+            .filter(key => key.startsWith("tadabbur-shell-") && key !== CACHE)
+            .map(key => caches.delete(key))
+        )
+      )
+      .then(() => self.clients.claim())
+  );
+});
 
-self.addEventListener("fetch", e => {
-  if (e.request.method !== "GET") return;
-  e.respondWith(
-    caches.match(e.request).then(c =>
-      c ||
-      fetch(e.request).then(r => {
-        if (r.ok && new URL(e.request.url).origin === self.location.origin) {
-          caches.open(CACHE).then(cache => cache.put(e.request, r.clone()));
+// Fetch: serve pages and assets from cache when possible.
+self.addEventListener("fetch", event => {
+  const request = event.request;
+
+  if (request.method !== "GET") return;
+
+  const url = new URL(request.url);
+
+  // Let external requests, such as Google Fonts, use normal networking.
+  if (url.origin !== self.location.origin) return;
+
+  // Navigation: try the network first, then show the cached app offline.
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request).catch(() => caches.match("./index.html"))
+    );
+    return;
+  }
+
+  // Assets: use the cache first, then the network.
+  event.respondWith(
+    caches.match(request).then(cached => {
+      if (cached) return cached;
+
+      return fetch(request).then(response => {
+        if (response.ok) {
+          const copy = response.clone();
+
+          caches.open(CACHE).then(cache => {
+            cache.put(request, copy);
+          });
         }
-        return r;
-      }).catch(() => caches.match("./index.html"))
-    )
+
+        return response;
+      });
+    })
   );
 });
