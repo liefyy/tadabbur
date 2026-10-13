@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f5f3ee">
+    <meta name="description" content="A minimalist personal Qur'anic reflection notebook.">
+    <title>Tadabbur</title>
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@400;600;700&family=EB+Garamond:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Lateef:wght@400;700&family=Lora:wght@400;500;600;700&family=Mada:wght@400;500;600;700&family=Merriweather:wght@400;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&family=Scheherazade+New:wght@400;700&family=Source+Serif+4:wght@400;500;600;700&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+  </head>
+  
+  <body>
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="#" data-view="home"><span>Tadabbur</span></a>
+      <div class="nav-label">TABS</div>
+      <nav>
+        <button class="nav active" data-view="home">⌂ &nbsp; Home</button>
+        <button class="nav" data-view="chapters">▤ &nbsp; Chapters</button>
+        <button class="nav" data-view="search">⌕ &nbsp; Search</button>
+        <button class="nav" data-view="bookmarks">♧ &nbsp; Bookmarks</button>
+      </nav>
+      <div class="side-bottom">
+        <div class="local"><i></i> Saved on this device</div>
+        <button class="nav" data-view="settings">⚙ &nbsp; Settings</button>
+      </div>
+      <div class="sidebar-resize" id="sidebarResize" role="separator" aria-orientation="vertical" aria-label="Resize sidebar" tabindex="0" title="Drag to resize sidebar"></div>
+    </aside>
+
+    <div class="mobilebar">
+      <button id="menu">☰</button>
+      <a href="#" data-view="home">Tadabbur</a>
+      <button id="mobileSearch">⌕</button>
+    </div>
+    <div id="scrim"></div>
+
+    <main>
+      <section class="view active" id="home">
+        <h1>Ponder over the words of Allah.</h1>
+        <p class="lead">Simply note down the words, questions, and reflections that stay with you as you read the Qur’an.</p>
+        <div class="actions">
+          <button class="primary" id="browse">Browse chapters ↗</button>
+          <button class="plain" id="continue">Continue where you left off →</button>
+        </div>
+        <hr>
+        <div class="heading-row">
+          <div>
+            <center><h4>كِتَـٰبٌ أَنزَلْنَـٰهُ إِلَيْكَ مُبَـٰرَكٌ لِّيَدَّبَّرُوٓا۟ ءَايَـٰتِهِۦ وَلِيَتَذَكَّرَ أُو۟لُوا۟ ٱلْأَلْبَـٰبِ</h4>
+			<h4>˹This is˺ a blessed Book which We have revealed to you ˹O Prophet˺ so that they may contemplate its verses, and people of reason may be mindful.<br>Surah Sad, 38:29</h4></center>
+          </div>
+        </div>
+        <div class="progress"><div id="progressBar"></div></div>
+        <div class="stats">
+          <div><b id="noteCount">0</b><span>Verses with notes</span></div>
+          <div><b id="bookmarkCount">0</b><span>Bookmarks</span></div>
+          <div><b>114</b><span>Chapters</span></div>
+        </div>
+        <hr>
+        <div class="tip">
+          <span>✳</span>
+          <div>
+            <b>How to use Tadabbur</b>
+            <p>Choose a chapter, open a verse, add the Arabic and translation you want to work with, then write your own tadabbur of the verses. Your changes save automatically on this device.</p>
+          </div>
+        </div>
+        <p class="foot">Your reflections are personal. Tadabbur does not supply its own translations or interpretations.</p>
+      </section>
+
+      <section class="view" id="chapters">
+        <div class="kicker">THE QUR’AN</div>
+        <h1>Chapters</h1>
+        <p class="lead compact">Choose a surah to open its verses.</p>
+        <div class="toolbar">
+          <label class="search"><span>⌕</span><input id="chapterFilter" placeholder="Find a chapter…" type="search"></label>
+        </div>
+        <div id="chapterGrid" class="chapter-grid"></div>
+      </section>
+
+      <section class="view" id="verses">
+        <div class="topline">
+          <button class="back" id="backChapters">← Chapters</button>
+          <span class="muted small" id="verseCount"></span>
+        </div>
+        <div class="kicker">CHAPTER</div>
+        <h1 id="verseTitle">Al-Fātiḥah</h1>
+        <p class="lead compact" id="verseSubtitle">Select a verse to begin.</p>
+        <div id="verseList" class="verse-list"></div>
+      </section>
+
+      <section class="view" id="editor">
+        <div class="topline">
+          <button class="back" id="backVerses">← Verses</button>
+          <span class="muted small" id="position"></span>
+        </div>
+        <div class="edit-title">
+          <div>
+            <div class="kicker" id="surahLabel"></div>
+            <h1 id="verseHeading">Verse 1</h1>
+          </div>
+          <button id="bookmark" class="bookmark" title="Bookmark verse" aria-label="Bookmark verse">♧</button>
+        </div>
+        <div class="editor-nav">
+          <button class="secondary" id="prev">← Previous</button>
+          <button class="secondary" id="next">Next →</button>
+        </div>
+        <div class="source-fields" id="sourceFields">
+          <div class="field">
+            <label for="arabic">Arabic</label>
+            <textarea id="arabic" dir="rtl" lang="ar" rows="3" placeholder="Enter or paste the Arabic verse here"></textarea>
+          </div>
+          <div class="field">
+            <label for="translation">Translation</label>
+            <textarea id="translation" rows="3" placeholder="Enter your chosen translation"></textarea>
+          </div>
+        </div>
+        <div class="reflection-workspace" id="reflectionWorkspace">
+          <div class="reflection-heading">
+            <div>
+              <div class="focus-context" id="focusContext"></div>
+              <label for="reflection">My Tadabbur</label>
+            </div>
+            <div class="reflection-tools">
+              <button class="source-toggle" id="sourceToggle" type="button" title="Show ayah and translation" aria-label="Show ayah and translation">◉ <span>Show ayah &amp; translation</span></button>
+              <button class="exit-focus" id="exitFocus" type="button" title="Exit focus mode" aria-label="Exit focus mode">↙</button>
+            </div>
+          </div>
+          <div class="flashcard" id="verseFlashcard" hidden>
+            <div class="flashcard-head">
+              <span>YOUR VERSE</span>
+              <button id="hideFlashcard" type="button" aria-label="Hide verse card">×</button>
+            </div>
+            <div class="flash-arabic" id="flashArabic" dir="rtl" lang="ar">Add the Arabic verse above</div>
+            <div class="flash-translation" id="flashTranslation">Add your chosen translation above</div>
+          </div>
+          <textarea id="reflection" rows="12" placeholder="What do you notice? What questions arise? Write your reflections here…"></textarea>
+          <div class="focus-hint" id="focusHint">Focus mode · Your ayah and translation are one tap away.</div>
+        </div>
+        <div class="edit-footer">
+          <span id="saveStatus"><i></i>Saved on this device</span>
+          <button class="plain" id="clearVerse">Clear this verse</button>
+        </div>
+      </section>
+
+      <section class="view" id="search">
+        <div class="kicker">YOUR NOTEBOOK</div>
+        <h1>Search</h1>
+        <p class="lead compact">Find something you wrote or saved.</p>
+        <label class="search big-search"><span>⌕</span><input id="globalSearch" type="search" placeholder="Search Arabic, translations, reflections…"></label>
+        <div id="searchResults" class="results"></div>
+      </section>
+
+      <section class="view" id="bookmarks">
+        <div class="kicker">SAVED FOR LATER</div>
+        <h1>Bookmarks</h1>
+        <p class="lead compact">Verses you want to return to.</p>
+        <div id="bookmarkList" class="results"></div>
+      </section>
+
+      <section class="view" id="settings">
+        <h1>Settings</h1>
+        <div class="settings">
+          <div class="setting">
+            <div>
+              <b>Appearance</b>
+              <p>Choose the look that feels right.</p>
+            </div>
+            <select id="theme">
+              <option value="system">System</option>
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+            </select>
+          </div>
+          <div class="setting">
+            <div>
+              <b>Text size</b>
+              <p>Adjust editor text size.</p>
+            </div>
+            <select id="fontSize">
+              <option value="small">Small</option>
+              <option value="medium">Medium</option>
+              <option value="large">Large</option>
+            </select>
+          </div>
+          <div class="setting">
+            <div>
+              <b>English font</b>
+              <p>Used for translations, reflections, and PDF export.</p>
+            </div>
+            <select id="englishFont">
+              <option value="Inter">Inter</option>
+              <option value="EB Garamond">EB Garamond</option>
+              <option value="Lora">Lora</option>
+              <option value="Playfair Display">Playfair Display</option>
+              <option value="Source Serif 4">Source Serif 4</option>
+              <option value="Merriweather">Merriweather</option>
+              <option value="Georgia">Georgia</option>
+              <option value="Arial">Arial</option>
+              <option value="Verdana">Verdana</option>
+              <option value="Trebuchet MS">Trebuchet MS</option>
+              <option value="Times New Roman">Times New Roman</option>
+            </select>
+          </div>
+          <div class="setting">
+            <div>
+              <b>Arabic font</b>
+              <p>Used for Arabic text and PDF export.</p>
+            </div>
+            <select id="arabicFont">
+              <option value="Amiri">Amiri</option>
+              <option value="Noto Naskh Arabic">Noto Naskh Arabic</option>
+              <option value="Noto Sans Arabic">Noto Sans Arabic</option>
+              <option value="Scheherazade New">Scheherazade New</option>
+              <option value="Lateef">Lateef</option>
+              <option value="Cairo">Cairo</option>
+              <option value="IBM Plex Sans Arabic">IBM Plex Sans Arabic</option>
+              <option value="Mada">Mada</option>
+              <option value="Tajawal">Tajawal</option>
+              <option value="Traditional Arabic">Traditional Arabic</option>
+              <option value="serif">System serif</option>
+              <option value="sans-serif">System sans-serif</option>
+            </select>
+          </div>
+          <div class="setting">
+            <div>
+              <b>Keyboard shortcuts</b>
+              <p><kbd>Ctrl/Cmd</kbd> + <kbd>K</kbd> Search · <kbd>Alt</kbd> + <kbd>←</kbd>/<kbd>→</kbd> Previous/next verse · <kbd>Esc</kbd> Close navigation</p>
+            </div>
+          </div>
+          <div class="setting">
+            <div>
+              <b>Export notebook</b>
+              <p>Download a designed PDF containing only verses with tadabbur, grouped by surah.</p>
+            </div>
+            <div class="setting-actions">
+              <button class="secondary" id="exportPDF">Export PDF</button>
+              <button class="secondary" id="exportJSON">Backup JSON</button>
+            </div>
+          </div>
+          <div class="setting">
+            <div>
+              <b>Restore backup</b>
+              <p>Import a Tadabbur JSON backup.</p>
+            </div>
+            <div>
+              <button class="secondary" id="importButton">Import JSON</button>
+              <input type="file" id="importFile" accept=".json,application/json" hidden>
+            </div>
+          </div>
+          <div class="setting">
+            <div>
+              <b>Storage</b>
+              <p id="storageInfo">Your notes are stored locally in this browser.</p>
+            </div>
+          </div>
+          <div class="setting">
+            <div>
+              <b>Delete all notebook data</b>
+              <p>Permanently remove notes and bookmarks from this browser.</p>
+            </div>
+            <button class="danger" id="deleteAll">Delete all</button>
+          </div>
+        </div>
+        <p class="foot">Back up your notebook regularly. Browser data can be lost if site data is cleared or the device is reset.</p>
+      </section>
+    </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="js/data.js"></script>
+    <script src="js/app.js"></script>
+  </body>
+</html>

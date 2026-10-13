@@ -1,0 +1,10 @@
+{
+  "name": "Tadabbur \u2014 Qur'anic Reflection Notebook",
+  "short_name": "Tadabbur",
+  "description": "A minimalist personal Qur'anic reflection notebook.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f5f3ee",
+  "theme_color": "#f5f3ee",
+  "icons": []
+}
