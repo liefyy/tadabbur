@@ -1,9 +1,71 @@
 (() => {
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const DB="tadabbur-data-v1", fallbackKey="tadabbur-fallback-v1";
+
+// Arabic Qur'an text loaded from the local quran.json file.
+let QURAN_VERSES = {};
+
+function loadQuran() {
+  const data = window.QURAN_DATA;
+
+  if (!data || !Array.isArray(data.verses)) {
+    throw new Error("Qur'an data is missing or invalid.");
+  }
+
+  QURAN_VERSES = {};
+
+  for (const verse of data.verses) {
+    if (
+      Number.isInteger(verse.surah) &&
+      Number.isInteger(verse.ayah) &&
+      typeof verse.text_ar === "string"
+    ) {
+      QURAN_VERSES[`${verse.surah}:${verse.ayah}`] = verse.text_ar;
+    }
+  }
+
+  console.info(
+    `Loaded ${Object.keys(QURAN_VERSES).length} Qur'an verses.`
+  );
+}
+
 const state={view:"home",surah:1,verse:1,notes:{},settings:{theme:"system",fontSize:"medium",englishFont:"Inter",arabicFont:"Amiri",sidebarWidth:236},last:null,timer:null,toastTimer:null};
-const surah=n=>SURAHS[n-1], id=(s,v)=>`${s}:${v}`, rec=(s=state.surah,v=state.verse)=>state.notes[id(s,v)]||{id:id(s,v),surah:s,verse:v,arabic:"",translation:"",reflection:"",bookmarked:false};
-const has=r=>!!r&&[r.arabic,r.translation,r.reflection].some(x=>String(x||"").trim()), esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+const surah = n => SURAHS[n - 1];
+const id = (s, v) => `${s}:${v}`;
+
+const rec = (s = state.surah, v = state.verse) => {
+  const key = id(s, v);
+
+  const r = state.notes[key] || {
+    id: key,
+    surah: s,
+    verse: v,
+    arabic: "",
+    translation: "",
+    reflection: "",
+    bookmarked: false
+  };
+
+  // Always prefer the canonical Arabic text from quran.json.
+  r.arabic = QURAN_VERSES[key] || r.arabic || "";
+
+  return r;
+};
+
+
+const has = r =>
+  !!r && [r.translation, r.reflection]
+    .some(x => String(x || "").trim());
+
+const esc = x => String(x ?? "").replace(/[&<>"']/g, c => ({
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+  "'": "&#39;"
+}[c]));
+
 let dbPromise;
 function db(){if(!("indexedDB"in window))return Promise.reject(Error("IndexedDB unavailable"));if(!dbPromise)dbPromise=new Promise((resolve,reject)=>{const q=indexedDB.open(DB,1);q.onupgradeneeded=()=>{q.result.createObjectStore("notes",{keyPath:"id"});q.result.createObjectStore("settings",{keyPath:"key"})};q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error)});return dbPromise}
 async function tx(store,mode,fn){const d=await db();return new Promise((resolve,reject)=>{const t=d.transaction(store,mode),q=fn(t.objectStore(store));t.oncomplete=()=>resolve(q?.result);t.onerror=()=>reject(t.error);t.onabort=()=>reject(t.error)})}
@@ -46,10 +108,59 @@ function editor() {
   }
 
 function status(s){$("#saveStatus").classList.toggle("saving",s==="saving");$("#saveStatus").innerHTML=`<i></i>${s==="saving"?"Saving…":s==="error"?"Could not save":"Saved on this device"}`}
-function queueSave(){const old=rec(),r={...old,arabic:$("#arabic").value,translation:$("#translation").value,reflection:$("#reflection").value,updatedAt:new Date().toISOString()};state.notes[r.id]=r;status("saving");clearTimeout(state.timer);state.timer=setTimeout(async()=>{try{await saveNote(r);status("saved");refresh()}catch(e){status("error");toast("Could not save. Export a backup if this continues.")}},300)}
+function queueSave(){const old=rec(),r={...old,arabic: QURAN_VERSES[id(state.surah, state.verse)] || $("#arabic").value,translation:$("#translation").value,reflection:$("#reflection").value,updatedAt:new Date().toISOString()};state.notes[r.id]=r;status("saving");clearTimeout(state.timer);state.timer=setTimeout(async()=>{try{await saveNote(r);status("saved");refresh()}catch(e){status("error");toast("Could not save. Export a backup if this continues.")}},300)}
 function refresh(){if(state.view==="home")home();if(state.view==="chapters")chapters($("#chapterFilter").value);if(state.view==="verses")verses();if(state.view==="bookmarks")bookmarks();if(state.view==="search")search($("#globalSearch").value)}
 function move(d){let s=state.surah,v=state.verse+d;if(v<1){if(s===1)return;s--;v=surah(s).verses}else if(v>surah(s).verses){if(s===114)return;s++;v=1}clearTimeout(state.timer);const r=rec();if(r.arabic!==$("#arabic").value||r.translation!==$("#translation").value||r.reflection!==$("#reflection").value){r.arabic=$("#arabic").value;r.translation=$("#translation").value;r.reflection=$("#reflection").value;r.updatedAt=new Date().toISOString();state.notes[r.id]=r;saveNote(r)}openVerse(s,v)}
-function search(q){const root=$("#searchResults"),needle=q.trim().toLocaleLowerCase();if(!needle){root.innerHTML='<div class="empty">Search your Arabic text, translations, and reflections.</div>';return}const rows=[];Object.values(state.notes).forEach(r=>{const m=[r.arabic,r.translation,r.reflection].find(x=>x&&x.toLocaleLowerCase().includes(needle));if(m)rows.push({r,m})});rows.sort((a,b)=>(b.r.updatedAt||"").localeCompare(a.r.updatedAt||""));root.innerHTML=rows.length?rows.map(({r,m})=>`<button class="result" data-open="${r.id}"><span class="result-meta"><span>${esc(surah(r.surah).name)} · Verse ${r.verse}</span><span>${r.bookmarked?"♧ ":""}↗</span></span><span class="excerpt">${esc(excerpt(m,needle))}</span></button>`).join(""):'<div class="empty">No matching notes found.</div>';$$("[data-open]").forEach(b=>b.onclick=()=>{const [s,v]=b.dataset.open.split(":").map(Number);openVerse(s,v)})}
+
+function search(q) {
+  const root = $("#searchResults");
+  const needle = q.trim().toLocaleLowerCase();
+
+  if (!needle) {
+    root.innerHTML = "";
+    return;
+  }
+
+  const rows = [];
+
+  Object.values(state.notes).forEach(r => {
+    const match = [
+      r.arabic,
+      r.translation,
+      r.reflection
+    ].find(text =>
+      text && text.toLocaleLowerCase().includes(needle)
+    );
+
+    if (match) {
+      rows.push({ r, m: match });
+    }
+  });
+
+  rows.sort((a, b) =>
+    (b.r.updatedAt || "").localeCompare(a.r.updatedAt || "")
+  );
+
+  root.innerHTML = rows.length
+    ? rows.map(({ r, m }) => `
+        <button class="result" data-open="${r.id}">
+          <span class="result-meta">
+            <span>${esc(surah(r.surah).name)} · Verse ${r.verse}</span>
+            <span>${r.bookmarked ? "♧ " : ""}↗</span>
+          </span>
+          <span class="excerpt">${esc(excerpt(m, needle))}</span>
+        </button>
+      `).join("")
+    : '<div class="empty">No matching notes found.</div>';
+
+  $$("[data-open]").forEach(button => {
+    button.onclick = () => {
+      const [s, v] = button.dataset.open.split(":").map(Number);
+      openVerse(s, v);
+    };
+  });
+}
+
 function excerpt(t,q){t=String(t||"").replace(/\s+/g," ").trim();let i=q?t.toLocaleLowerCase().indexOf(q):0;if(t.length<160)return t;let start=Math.max(0,i-45);return (start?"…":"")+t.slice(start,start+150)+(start+150<t.length?"…":"")}
 function bookmarks(){const root=$("#bookmarkList"),arr=Object.values(state.notes).filter(r=>r.bookmarked).sort((a,b)=>a.surah-b.surah||a.verse-b.verse);root.innerHTML=arr.length?arr.map(r=>`<button class="result" data-open="${r.id}"><span class="result-meta"><span>${esc(surah(r.surah).name)} · Verse ${r.verse}</span><span>♧</span></span><span class="excerpt">${esc(r.reflection||r.translation||r.arabic||"Bookmarked verse · no notes yet")}</span></button>`).join(""):'<div class="empty">No bookmarks yet. Bookmark a verse from its editor to find it here.</div>';$$("[data-open]").forEach(b=>b.onclick=()=>{const [s,v]=b.dataset.open.split(":").map(Number);openVerse(s,v)})}
 function download(name,content,type){const url=URL.createObjectURL(new Blob([content],{type})),a=document.createElement("a");a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
@@ -69,7 +180,42 @@ function exportPDF(){
 }
 async function importJSON(file){let p;try{p=JSON.parse(await file.text())}catch{toast("That file is not valid JSON.");return}if(!p||p.app!=="Tadabbur"||p.formatVersion!==1||!Array.isArray(p.verses)){toast("Not a supported Tadabbur backup.");return}const valid=p.verses.filter(r=>r&&Number.isInteger(r.surah)&&Number.isInteger(r.verse)&&surah(r.surah)&&r.verse>=1&&r.verse<=surah(r.surah).verses).map(r=>({id:id(r.surah,r.verse),surah:r.surah,verse:r.verse,arabic:typeof r.arabic==="string"?r.arabic:"",translation:typeof r.translation==="string"?r.translation:"",reflection:typeof r.reflection==="string"?r.reflection:"",bookmarked:!!r.bookmarked,updatedAt:typeof r.updatedAt==="string"?r.updatedAt:new Date().toISOString()}));const choice=prompt(`Found ${valid.length} valid verse entries.\nType MERGE to combine or REPLACE to replace current data. Cancel to stop.`,"MERGE");if(choice===null)return;if(!["MERGE","REPLACE"].includes(choice.trim().toUpperCase())){toast("Import cancelled. Type MERGE or REPLACE.");return}if(choice.trim().toUpperCase()==="REPLACE"&&!confirm("Replace all existing notes and bookmarks? Export a backup first if needed."))return;if(choice.trim().toUpperCase()==="REPLACE")state.notes={};valid.forEach(r=>{const old=state.notes[r.id];if(!old||(Date.parse(r.updatedAt)||0)>=(Date.parse(old.updatedAt)||0))state.notes[r.id]=r});for(const r of Object.values(state.notes))await saveNote(r);if(p.settings&&choice.trim().toUpperCase()==="REPLACE")for(const [k,v]of Object.entries(p.settings))await saveSetting(k,v);refresh();toast("Backup imported.")}
 function applySettings(){const theme=state.settings.theme||"system";document.documentElement.dataset.theme=theme==="system"?(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"):theme;$("#theme").value=theme;$("#fontSize").value=state.settings.fontSize||"medium";$("#englishFont").value=state.settings.englishFont||"Inter";$("#arabicFont").value=state.settings.arabicFont||"Amiri";document.documentElement.style.setProperty("--font-english",JSON.stringify(state.settings.englishFont||"Inter"));document.documentElement.style.setProperty("--font-arabic",JSON.stringify(state.settings.arabicFont||"Amiri"));document.documentElement.style.setProperty("--editor-size",({small:"13px",medium:"15px",large:"18px"})[state.settings.fontSize||"medium"]);const width=Math.min(360,Math.max(190,Number(state.settings.sidebarWidth)||236));document.documentElement.style.setProperty("--sidebar-width",width+"px")}
-async function init(){try{state.notes=Object.fromEntries((await allNotes()).map(r=>[r.id||id(r.surah,r.verse),r]));state.settings={...state.settings,...await allSettings()};state.last=await getSetting("lastLocation")}catch(e){console.warn(e)}applySettings();home();chapters();verses();bookmarks();$("#storageInfo").textContent=`${Object.keys(state.notes).length} saved verse entries. Data is stored in this browser on this device.`}
+
+async function init() {
+  try {
+    state.notes = Object.fromEntries(
+      (await allNotes()).map(r => [r.id || id(r.surah, r.verse), r])
+    );
+
+    state.settings = {
+      ...state.settings,
+      ...await allSettings()
+    };
+
+    state.last = await getSetting("lastLocation");
+
+    // Always restore canonical Arabic after saved notes have loaded.
+    for (const [key, note] of Object.entries(state.notes)) {
+      if (QURAN_VERSES[key]) {
+        note.arabic = QURAN_VERSES[key];
+      }
+    }
+  } catch (error) {
+    console.error("Could not initialize Tadabbur:", error);
+    toast("Some saved data could not be loaded.");
+  }
+
+  applySettings();
+  home();
+  chapters();
+  verses();
+  bookmarks();
+
+  $("#storageInfo").textContent =
+    `${Object.keys(state.notes).length} saved verse entries. ` +
+    "Data is stored in this browser on this device.";
+}
+
 function updateFlashcard(){if(!$("#flashArabic"))return;const a=$("#arabic").value.trim(),t=$("#translation").value.trim();$("#flashArabic").textContent=a||"Add the Arabic verse above";$("#flashTranslation").textContent=t||"Add your chosen translation above"}
 function setFocusMode(on){document.body.classList.toggle("focus-writing",!!on);if(!on)$("#verseFlashcard").hidden=true;updateFlashcard()}
 function toggleFlashcard(){const card=$("#verseFlashcard");card.hidden=!card.hidden;updateFlashcard();if(!card.hidden)card.scrollIntoView({behavior:"smooth",block:"nearest"})}
@@ -87,6 +233,15 @@ $("#exportJSON").onclick=exportJSON;$("#exportPDF").onclick=exportPDF;$("#import
 $("#deleteAll").onclick=async()=>{if(!confirm("Delete all notes, bookmarks, and settings from this device? This cannot be undone."))return;if(!confirm("Final confirmation: permanently delete all Tadabbur data?"))return;state.notes={};state.settings={theme:"system",fontSize:"medium"};try{const d=await db();await new Promise((resolve,reject)=>{const t=d.transaction(["notes","settings"],"readwrite");t.objectStore("notes").clear();t.objectStore("settings").clear();t.oncomplete=resolve;t.onerror=()=>reject(t.error)})}catch{localStorage.removeItem("tadabbur-fallback-v1")}applySettings();home();chapters();verses();bookmarks();toast("Notebook data deleted.")};
 document.addEventListener("keydown",e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){e.preventDefault();view("search")}if(e.key==="Escape"){document.body.classList.remove("nav-open");if(document.body.classList.contains("focus-writing"))setFocusMode(false);}if(e.altKey&&e.key==="ArrowLeft"&&state.view==="editor"){e.preventDefault();move(-1)}if(e.altKey&&e.key==="ArrowRight"&&state.view==="editor"){e.preventDefault();move(1)}});
 matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change",()=>{if((state.settings.theme||"system")==="system")applySettings()});
+
+
+try {
+  loadQuran();
+} catch (error) {
+  console.error("Could not load Qur'an data:", error);
+  toast("Qur'an text could not be loaded. Check js/quran.js.");
+}
 init();
+
 })();
 if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(console.warn));
